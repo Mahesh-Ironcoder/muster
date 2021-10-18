@@ -1,38 +1,61 @@
-.App {
-  text-align: center;
+.meetingStyles{
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.ScreenStyles {
+	/* flex-grow: 5;  check this one out for mobile-first design */
+	/* border: '1px solid blue'; */
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	/* flex: 4; */
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.VideoStyles {
+	position: absolute;
+	top: 0.25rem;
+	right: 0.25rem; 
+	display: flex;
+	justify-content: center;
+	/* margin: auto; */
+	flex: 4; 
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+.optionStyles{
+	width: 3rem;
+	height: 3rem;
+	border: 1px solid black;
+	border-radius: 50%;
+	font-size: 0.8rem;
+	margin: -1.25rem 2rem 0px 2rem;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	align-self: flex-start;
+	cursor: pointer;
 }
 
-.App-link {
-  color: #61dafb;
+.optionsbarStyles{
+	height: 9.5vh;
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	background-color: #42414C;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+video{
+	/* border-radius: 0.5rem; */
+	border-radius: 50%;
+}
+
+.createRoom{
+	display: flex;
+	flex-direction: column;
+	justify-content: space-around;
 }
