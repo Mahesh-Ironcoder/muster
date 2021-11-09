@@ -18,11 +18,11 @@ interface OptionsBarProps {
 	options: optionType[];
 }
 
-function Option(props: OptionProps) {
+export function Option(props: OptionProps) {
 	const [state, setState] = useState<boolean>(true);
 	return (
 		<div
-			style={{ backgroundColor: state ? '#E2D0FF' : '#FF725E' }}
+			style={{ backgroundColor: state ? '#E2D0FF' : '#FF725E', zIndex: 1000 }}
 			className='optionStyles'
 			onClick={() => {
 				setState(!state);

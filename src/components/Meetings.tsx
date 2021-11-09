@@ -1,9 +1,19 @@
 import { useEffect, useState, createContext, useContext, useRef } from 'react';
-import Video from './Video';
 import Screen from './Screen';
-import ChatBox from './ChatBox';
-import { MeetingContextPropsType, MeetingCreationContext } from '../App';
-import { Grid } from '@mui/material';
+
+import { OptionsBar } from './Option';
+import AttendeeList from './Attendees';
+
+import CallEndTwoToneIcon from '@mui/icons-material/CallEndTwoTone';
+import MicTwoToneIcon from '@mui/icons-material/MicTwoTone';
+import MicOffTwoToneIcon from '@mui/icons-material/MicOffTwoTone';
+import VideocamTwoToneIcon from '@mui/icons-material/VideocamTwoTone';
+import VideocamOffTwoToneIcon from '@mui/icons-material/VideocamOffTwoTone';
+import ScreenShareTwoToneIcon from '@mui/icons-material/ScreenShareTwoTone';
+import StopScreenShareTwoToneIcon from '@mui/icons-material/StopScreenShareTwoTone';
+import { makeStyles } from '@mui/styles';
+import PeerConnection from '../utils/peerconnection';
+import useWebSockets from '../hooks/useWebSockets';
 
 export interface MeetingContextType {
 	localStream: MediaStream;
@@ -11,34 +21,50 @@ export interface MeetingContextType {
 	setPause: (st: boolean) => void;
 }
 
+interface MeetingRoomProps {
+	localMedia: MediaStream | null;
+}
+const useMeetingStyles = makeStyles({
+	root: {
+		display: 'flex',
+		flexDirection: 'column',
+		justifyContent: 'flex-end',
+		height: '100vh',
+	},
+});
+
 export const MeetingContext = createContext({});
 
-const pcConf = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-const constraints = { audio: true, video: true };
+// const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+// const constraints = { audio: true, video: true };
 
-function Meetings() {
-	const { signaling } = useContext(
-		MeetingCreationContext
-	) as MeetingContextPropsType;
-	const [peer, setPeer] = useState(new RTCPeerConnection(pcConf));
-	const [mute, setMute] = useState(true);
-	const [pause, setPause] = useState(true);
+function MeetingRoom(props: MeetingRoomProps) {
+	const [peerConns, setPeerConns] = useState<PeerConnection[]>([]);
 	const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-	const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+
+	const [displayMedia, setDisplayMedia] = useState<MediaStream | null>(null);
+
+	const [self, setSelf] = useState<PeerConnection | null>(null);
+	const [mute, setMute] = useState<boolean>(false);
+	const [pause, setPause] = useState<boolean>(false);
+
+	const classes = useMeetingStyles();
 
 	useEffect(() => {
-		// const sv = selfView.current;
-		addCameraMic();
-		// return () => {
-		// 	if (sv) sv.srcObject = null;
-		// };
-	}, []);
-
+		if (localStream) {
+			setMute(localStream.getAudioTracks()[0].enabled);
+			setPause(localStream.getVideoTracks()[0].enabled);
+		}
+		// const conn = new PeerConnection(signaling);
+		// setSelf(conn);
+	}, [localStream]);
 	useEffect(() => {
 		if (localStream) {
 			localStream.getAudioTracks().forEach((track) => {
 				track.enabled = mute;
 			});
+			// localStream.getVideoTracks().forEach((track) => {
+			// });
 		}
 	}, [localStream, mute]);
 
@@ -49,64 +75,187 @@ function Meetings() {
 			});
 		}
 	}, [localStream, pause]);
-	// useEffect(() => {
-	// 	if (!signaling.OPEN || !peer) {
-	// 		console.log('NO signaling server or peer connection found');
-	// 		return;
-	// 	}
-	// 	peer.onicecandidate = ({ candidate }) => {
-	// 		const ice = JSON.stringify({ iceCandidate: candidate });
-	// 		signaling.send(ice);
-	// 	};
-	// 	peer.onnegotiationneeded = async (event) => {
-	// 		try {
-	// 			await peer.setLocalDescription();
-	// 			// send the offer to the other peer
-	// 			const desc = JSON.stringify({ description: peer.localDescription });
-	// 			signaling.send(desc);
-	// 		} catch (err) {
-	// 			console.error(err);
-	// 		}
-	// 	};
-	// 	peer.ontrack = ({ track, streams }) => {
-	// 		// once media for a remote track arrives, show it in the remote video element
-	// 		// track.onunmute = () => {
-	// 		// 	// don't set srcObject again if it is already set.
-	// 		// 	// if (remoteView.srcObject) return;
-	// 		// 	// remoteView.srcObject = streams[0];
-	// 		// };
-	// 		setRemoteStream(streams[0]);
-	// 	};
-	// }, [peer, signaling]);
 
-	async function addCameraMic() {
-		try {
-			const stream = await navigator.mediaDevices.getUserMedia(constraints);
-			for (const track of stream.getTracks()) {
-				peer.addTrack(track, stream);
-			}
-			// if (selfView.current) selfView.current.srcObject = stream;
-			setLocalStream(stream);
-		} catch (err) {
-			console.error(err);
+	useEffect(() => {
+		setLocalStream(props.localMedia);
+	}, [props]);
+
+	useEffect(() => {
+		return () => {
+			if (displayMedia) stopDisplayCapture();
+		};
+	}, []);
+
+	const { socket: signaling } = useWebSockets({
+		url: '',
+		options: {
+			onopen: handleConnOpen,
+			onmessage: handleRecvMsg,
+			onerror: handleConnError,
+		},
+	});
+
+	async function getDisplayMedia() {
+		const gdmOptions = {
+			// audio: {
+			// 	echoCancellation: true,
+			// 	noiseSuppression: true,
+			// },
+			audio: false,
+			video: true,
+		};
+		// @ts-ignore
+		const media = await navigator.mediaDevices.getDisplayMedia(gdmOptions);
+
+		media.onremovetrack = (e: MediaStreamTrackEvent) => {
+			console.log('removing track........................!', e);
+		};
+		media.getVideoTracks()[0].onended = () => {
+			stopDisplayCapture();
+		};
+
+		setDisplayMedia(media);
+	}
+
+	function stopDisplayCapture() {
+		displayMedia?.getTracks().forEach((track) => {
+			track.stop();
+		});
+		setDisplayMedia(null);
+	}
+
+	function handleConnOpen(e: Event) {
+		console.log('Opened connection to #url');
+		const conn = new PeerConnection(signaling);
+		const data = {
+			type: 'newConn',
+			from: conn.id,
+			//id, room
+		};
+		signaling?.send(JSON.stringify(data));
+		setPeerConns([...peerConns, conn]);
+	}
+
+	function handleRecvMsg(e: MessageEvent) {
+		console.log('Recieving message from connection to ws://localhost:8080/');
+		const msg = e.data;
+		switch (msg.type) {
+			case 'offer':
+				handleOffer(msg);
+				break;
+			case 'answer':
+				handleAnswer(msg);
+				break;
+			case 'newConn':
+				handleNewConn(msg);
+				break;
+			case 'ice':
+				handleNewIce(msg);
+				break;
+			default:
+				break;
 		}
 	}
 
+	function handleConnError(e: Event) {
+		console.log('Error in connceting to url');
+	}
+
+	const handleNewConn = (data: any) => {
+		const lid = self ? self.id : null;
+		const peer = new PeerConnection(signaling, lid);
+		peer.start(localStream, data['from']);
+		setPeerConns([...peerConns, peer]);
+	};
+
+	const handleOffer = (data: any) => {
+		let peer = peerConns.filter((conn) => {
+			return conn.id === data['to'];
+		})[0];
+		peer.setOffer(data['offer']);
+	};
+
+	const handleAnswer = (data: any) => {
+		let peer = peerConns.filter((conn) => {
+			return conn.id === data['to'];
+		})[0];
+		peer.setAnswer(data['answer']);
+	};
+
+	const handleNewIce = (data: any) => {
+		let peer = peerConns.filter((conn) => {
+			return conn.id === data['to'];
+		})[0];
+		peer.addIceCand(data['candidate']);
+	};
+
+	const options = [
+		{
+			name: 'mic',
+			icon: <MicTwoToneIcon color='primary' />,
+			offIcon: <MicOffTwoToneIcon color='action' />,
+			onclick: () => {
+				console.log('Mute toggle');
+				setMute(!mute);
+				// setIsMute(!isMute);
+			},
+		},
+		{
+			name: 'pause',
+			icon: <VideocamTwoToneIcon color='primary' />,
+			offIcon: <VideocamOffTwoToneIcon color='action' />,
+			onclick: () => {
+				console.log('Videocam toggle');
+				setPause(!pause);
+				// setIsPause(!isPause);
+			},
+		},
+		{
+			name: 'Screen Share',
+			icon: <ScreenShareTwoToneIcon color='primary' />,
+			offIcon: <StopScreenShareTwoToneIcon color='action' />,
+			onclick: () => {
+				if (displayMedia === null) getDisplayMedia();
+				else {
+					stopDisplayCapture();
+				}
+			},
+		},
+		{
+			name: 'End',
+			icon: <CallEndTwoToneIcon color='primary' />,
+			onclick: () => {
+				// document.close();/
+				window.close();
+			},
+		},
+	];
+
 	return (
-		<MeetingContext.Provider value={{ setMute, setPause, localStream }}>
-			{/* <Grid container className='meetingStyles' width='100%' height='80vh'>
-				<Grid item xs={6}>
-					<Video ms={localStream} />
-				</Grid>
-				<Grid item xs={6}>
-					<Video ms={remoteStream} />
-				</Grid>
-			</Grid> */}
-			<Screen />
-		</MeetingContext.Provider>
+		<div className={classes.root}>
+			{displayMedia ? (
+				<Screen
+					displayMedia={displayMedia}
+					userMedia={localStream}
+					vidPause={pause}
+				/>
+			) : (
+				<AttendeeList
+					attendees={[
+						'Mahesh',
+						'Teja',
+						'Sushma',
+						'some',
+						'lorem',
+						'ipsum',
+						'some',
+						'more',
+					]}
+				/>
+			)}
+			<OptionsBar options={options} />
+		</div>
 	);
 }
 
-export default Meetings;
-
-// style={{ display: 'flex', height: '99.8vh', border: '0.5px solid black' }}
+export default MeetingRoom;

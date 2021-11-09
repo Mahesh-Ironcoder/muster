@@ -1,18 +1,47 @@
-import React, { useEffect, useRef, useContext, useState } from 'react';
-import { MeetingContext, MeetingContextType } from './Meetings';
+import React, { useEffect, useRef, useState } from 'react';
+// import { MeetingContext, MeetingContextType } from './Meetings';
+import MicTwoToneIcon from '@mui/icons-material/MicTwoTone';
+import MicOffTwoToneIcon from '@mui/icons-material/MicOffTwoTone';
+import VideocamTwoToneIcon from '@mui/icons-material/VideocamTwoTone';
+import VideocamOffTwoToneIcon from '@mui/icons-material/VideocamOffTwoTone';
+// import AccountCircleTwoToneIcon from '@mui/icons-material/AccountCircleTwoTone';
+import { Option } from './Option';
+import { makeStyles } from '@mui/styles';
 
-function Video(props: any) {
-	const [isVideoOn, setIsVideoOn] = useState(true);
-	// const [mediaStream, setMediaStrem] = useState(props.ms);
+interface VideoProps {
+	localStream: MediaStream | null;
+	showOptions?: boolean;
+	style?: React.CSSProperties;
+	vidStyle?: React.CSSProperties;
+}
+
+const useVidStyles = makeStyles({
+	opt: {
+		'display': 'flex',
+		'flexDirection': 'row',
+		'justifyContent': 'center',
+		'alignItems': 'baseline',
+		'position': 'relative',
+		'bottom': '5rem',
+		'background': 'rgba(0,0,0, 0.7)',
+		'width': '50%',
+		'height': 'fit-content',
+		'margin': 'auto',
+		'borderRadius': '20px',
+		'& > *': {
+			margin: '0.5rem 2rem',
+		},
+	},
+});
+
+function Video(props: VideoProps) {
+	const { localStream: mediaStream, showOptions = true } = props;
+
+	const [vidState, setVidState] = useState(true);
+	const [micState, setMicState] = useState(true);
 	const vidRef = useRef<HTMLVideoElement | null>(null);
 
-	const { localStream: mediaStream } = useContext(
-		MeetingContext
-	) as MeetingContextType;
-
-	// useEffect(() => {
-	// 	if (props.ms) setMediaStrem(props.ms);
-	// }, [props]);
+	const classes = useVidStyles();
 
 	useEffect(() => {
 		const vidEle = vidRef.current;
@@ -20,7 +49,12 @@ function Video(props: any) {
 
 		if (!mediaStream) {
 			console.log('Mediastream: ', mediaStream);
-			setIsVideoOn(false);
+			setVidState(false);
+		} else {
+			setVidState(mediaStream?.getVideoTracks()[0].enabled);
+			if (mediaStream?.getAudioTracks().length > 0) {
+				setMicState(mediaStream?.getAudioTracks()[0].enabled);
+			}
 		}
 
 		console.log('Effect on video...!');
@@ -35,13 +69,44 @@ function Video(props: any) {
 	}, [mediaStream]);
 
 	return (
-		<div className='VideoStyles'>
-			{/* {isVideoOn ? (
-				<video ref={vidRef} autoPlay width={360} />
+		<div id='videoContainer' style={props.style && { ...props.style }}>
+			{/* {vidState ? (
+				<video ref={vidRef} autoPlay width={180} />
 			) : (
-				<span className='material-icons-two-tone'>account_circle</span>
+				<AccountCircleTwoToneIcon color='primary' fontSize='large' />
 			)} */}
-			<video ref={vidRef} autoPlay width='180' height='180' />
+			<video
+				ref={vidRef}
+				autoPlay
+				// width={180}
+				style={props.vidStyle && { ...props.vidStyle }}
+			/>
+			{showOptions && (
+				<div className={classes.opt}>
+					<Option
+						name='mic'
+						icon={<MicTwoToneIcon />}
+						offIcon={<MicOffTwoToneIcon />}
+						onClick={() => {
+							mediaStream?.getAudioTracks().forEach((track: MediaStreamTrack) => {
+								track.enabled = !micState;
+								setMicState(!micState);
+							});
+						}}
+					/>
+					<Option
+						name='Video'
+						icon={<VideocamTwoToneIcon />}
+						offIcon={<VideocamOffTwoToneIcon />}
+						onClick={() => {
+							mediaStream?.getVideoTracks().forEach((track: MediaStreamTrack) => {
+								track.enabled = !vidState;
+								setVidState(!vidState);
+							});
+						}}
+					/>
+				</div>
+			)}
 		</div>
 	);
 }
