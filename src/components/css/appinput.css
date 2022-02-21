@@ -1,0 +1,22 @@
+.app-input{
+    padding: 0.25rem !important;
+    margin: 0.5rem 1rem !important;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root{
+    box-shadow: inset 6px 6px 2px -2px #c8d1dd, inset -6px -6px 2px -2px #f3f5f7;
+	border-radius: 30px;
+    padding: 0.1rem 1rem;
+    padding-left: 1.5rem;
+}
+
+.MuiOutlinedInput-input{
+    border-radius: 4px !important;
+    padding: 5px !important;
+}
+
+.MuiInputBase-root .MuiOutlinedInput-input::placeholder{
+    color: black !important;
+    opacity: 0.75 !important;
+    font-family: Consolas, Verdana, Geneva, Tahoma, sans-serif;
+}

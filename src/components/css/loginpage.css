@@ -1,0 +1,18 @@
+.login-wrapper{
+    background: #e9edf0;
+    padding: 1rem;
+    padding-top: 3rem;
+    border-radius: 10px;
+    box-shadow: 8px 8px 16px -12px #868282, -8px -8px 16px -2px #ffffff;
+    justify-content: center;
+    align-items: center;
+}
+
+@keyframes toRight {
+    0% {
+        transform: translateX(0),
+    };
+    100%{
+        transform: translateX(50%),
+    };
+}

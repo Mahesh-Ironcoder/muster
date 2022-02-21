@@ -2,7 +2,7 @@ import { Button, Grid, Paper, TextField } from '@mui/material';
 // import { Box } from '@mui/system';
 import { makeStyles } from '@mui/styles';
 import React, { useContext } from 'react';
-import { MeetingContextPropsType, MeetingCreationContext } from '../App';
+import { MeetingContextPropsType, MeetingCreationContext } from '../apps/MeetingApp';
 import Video from './Video';
 
 interface CreateMeetingProps {

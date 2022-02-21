@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 type useWebSocketsProps = {
 	url: string;
@@ -11,29 +11,31 @@ type useWebSocketsProps = {
 };
 
 function useWebSockets(props: useWebSocketsProps) {
-	const [socket, setSocket] = useState<WebSocket | null>(null);
+	const [socket, setSocket] = useState<WebSocket>(new WebSocket(props.url));
 	useEffect(() => {
-		const { options: opt } = props;
-		let soc = null;
-		try {
-			soc = new WebSocket(props.url);
-			console.log('from hook');
-			if (opt.onopen) soc.onopen = opt.onopen;
-			if (opt.onmessage) soc.onmessage = opt.onmessage;
-			if (opt.onclose) soc.onclose = opt.onclose;
-			if (opt.onerror) soc.onerror = opt.onerror;
-		} catch (e) {
-			console.error(e);
+		if (socket) {
+			const { options: opt } = props;
+			console.log('from hook', props);
+			if (opt.onopen) socket.onopen = opt.onopen;
+			if (opt.onmessage) socket.onmessage = opt.onmessage;
+			if (opt.onclose) socket.onclose = opt.onclose;
+			else
+				socket.onclose = (ev: CloseEvent) => {
+					console.log('Closing wesocket connection', ev);
+				};
+			if (opt.onerror) socket.onerror = opt.onerror;
 		}
-		if (soc) {
-			setSocket(soc);
-		}
-	}, [props]);
+
+		return () => {
+			if (socket != null && socket.OPEN) {
+				console.log('Closing the socket');
+				socket.close();
+			}
+		};
+	}, [props, socket]);
 
 	function send(data: any) {
-		if (socket) {
-			socket.send(JSON.stringify(data));
-		}
+		socket.send(JSON.stringify(data));
 	}
 	return { socket, send };
 }

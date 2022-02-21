@@ -1,65 +1,93 @@
-import React, { createContext } from 'react';
+import { useEffect, useState, useContext, ReactElement } from 'react';
 import './App.css';
-import CreateMeeting from './components/CreateMeeting';
-import MeetingRoom from './components/Meetings';
+import AppOffline from './apps/AppOffline';
+// import MeetingApp from './apps/MeetingApp';
+import {
+	BrowserRouter,
+	Navigate,
+	Route,
+	Routes,
+	useLocation,
+} from 'react-router-dom';
+import MainApp from './apps/MainApp';
+import LandingPage from './apps/LandingPage';
+import Home from './components/elements/Home';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { firebaseConfig } from './frbconfig';
+import FirebaseContextProvider, {
+	FirebaseCtxt,
+} from './components/contexts/FirebaseContext';
+import LoginPage from './components/elements/LoginPage';
+import Loading from './components/elements/Loading';
+import { User } from 'firebase/auth';
+
 // import useWebSockets from './hooks/useWebSockets';
 
-export const MeetingCreationContext = createContext({});
-
-export type MeetingContextPropsType = {
-	roomId: number;
-	hostName: string;
-	roomName: string;
-	signaling: WebSocket;
-	handleCreation: (roomName: string, hostName: string) => void;
-	handleRoomNameChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-	handleHostNameChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+type RequireAuthProps = {
+	children: ReactElement;
+	redirectTo: string;
 };
 
-// var signaling: WebSocket | null = null;
+function RequireAuth(props: RequireAuthProps) {
+	const { currUser } = useContext(FirebaseCtxt);
+	const location = useLocation();
+
+	return (
+		<div>
+			{currUser ? (
+				props.children
+			) : (
+				<Navigate state={location.pathname} to={props.redirectTo} replace={true} />
+			)}
+		</div>
+	);
+}
 
 function App() {
-	const [roomId, setRoomId] = React.useState<number | null>(null);
-	const [roomName, setRoomName] = React.useState<string>('');
-	const [hostName, setHostName] = React.useState<string>('');
+	const [isOnline, setIsOnline] = useState(window.navigator.onLine);
+	const [fapp, setFapp] = useState<FirebaseApp | null>(null);
 
-	const [localmedia, setLocalmedia] = React.useState<MediaStream | null>(null);
-
-	React.useEffect(() => {
-		getLocalMedia();
+	useEffect(() => {
+		window.onoffline = (e) => {
+			console.log('The app is offline...!');
+			setIsOnline(false);
+			setFapp(null);
+		};
+		window.ononline = (e) => {
+			console.log('The app is Online...!');
+			setIsOnline(true);
+			let app = initializeApp(firebaseConfig);
+			setFapp(app);
+		};
+		let app = initializeApp(firebaseConfig);
+		setFapp(app);
 	}, []);
 
-	async function getLocalMedia() {
-		const media = await navigator.mediaDevices.getUserMedia({
-			audio: true,
-			video: { height: { ideal: 240 } },
-		});
-		setLocalmedia(media);
+	if (!isOnline) {
+		return <AppOffline />;
 	}
 
-	const handleCreation = (roomName: string, hostName: string) => {
-		setRoomId(Date.now());
-		setHostName(hostName);
-		setRoomName(roomName);
-		// signaling = new WebSocket();
-	};
 	return (
-		<div className='App'>
-			<MeetingCreationContext.Provider
-				value={{
-					roomId,
-					hostName,
-					roomName,
-					handleCreation,
-					signaling: null,
-					localStream: localmedia,
-				}}>
-				{roomId ? (
-					<MeetingRoom localMedia={localmedia} />
-				) : (
-					<CreateMeeting localMedia={localmedia} />
-				)}
-			</MeetingCreationContext.Provider>
+		<div>
+			<BrowserRouter>
+				<FirebaseContextProvider app={fapp}>
+					<Routes>
+						<Route path='/' element={<LandingPage />} />
+						<Route path='/login' element={<LoginPage />} />
+						<Route
+							path='/app'
+							element={
+								<RequireAuth redirectTo='/login'>
+									<MainApp />
+								</RequireAuth>
+							}>
+							{/* <Route index element={<MainApp />} /> */}
+							<Route index element={<Home />} />
+						</Route>
+						<Route path='*' element={<AppOffline />} />
+					</Routes>
+				</FirebaseContextProvider>
+			</BrowserRouter>
 		</div>
 	);
 }

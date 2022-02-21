@@ -51,7 +51,8 @@ function Video(props: VideoProps) {
 			console.log('Mediastream: ', mediaStream);
 			setVidState(false);
 		} else {
-			setVidState(mediaStream?.getVideoTracks()[0].enabled);
+			if (mediaStream?.getVideoTracks().length > 0)
+				setVidState(mediaStream?.getVideoTracks()[0].enabled);
 			if (mediaStream?.getAudioTracks().length > 0) {
 				setMicState(mediaStream?.getAudioTracks()[0].enabled);
 			}
